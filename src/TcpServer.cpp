@@ -1,15 +1,15 @@
 #include "TcpServer.h"
 #include <chrono>
 
-//Êîíñòðóêòîð ïðèíèìàåò:
-//port - ïîðò íà êîòîðîì áóäåì çàïóñêàòü ñåðâåð
-//handler - callback-ôóíêöèÿ çàïóñêàÿìàÿ ïðè ïîäêëþ÷åíèè êëèåíòà
-//          îáúåêò êîòîðîãî è ïåðåäàþò ïåðâûì àðãóìåíòîì â callback
-//          (ïðèìåð ëÿìáäà-ôóíêöèè: [](TcpServer::Client){...do something...})
+//Конструктор принимает:
+//port - порт на котором будем запускать сервер
+//handler - callback-функция запускаямая при подключении клиента
+//          объект которого и передают первым аргументом в callback
+//          (пример лямбда-функции: [](TcpServer::Client){...do something...})
 TcpServer::TcpServer(const uint16_t port, handler_function_t handler) : port(port), handler(handler), w_data(WSAData()) {}
 
-//Äåñòðóêòîð îñòàíàâëèâàåò ñåðâåð åñëè îí áûë çàïóùåí
-//è âû÷èùàåò çàäàííóþ âåðñèþ WinSocket
+//Деструктор останавливает сервер если он был запущен
+//и вычищает заданную версию WinSocket
 TcpServer::~TcpServer() {
     if (_status == status::up)
         stop();
@@ -18,93 +18,93 @@ TcpServer::~TcpServer() {
 #endif
 }
 
-//Çàäà¸ò callback-ôóíêöèþ çàïóñêàÿìóþ ïðè ïîäêëþ÷åíèè êëèåíòà
+//Задаёт callback-функцию запускаямую при подключении клиента
 void TcpServer::setHandler(TcpServer::handler_function_t handler) { this->handler = handler; }
 
-//Getter/Setter ïîðòà
+//Getter/Setter порта
 uint16_t TcpServer::getPort() const { return port; }
 uint16_t TcpServer::setPort(const uint16_t port) {
     this->port = port;
-    restart(); //Ïåðåçàïóñòèòü åñëè ñåðâåð áûë çàïóùåí
+    restart(); //Перезапустить если сервер был запущен
     return port;
 }
 
-//Ïåðåçàïóñê ñåðâåðà
+//Перезапуск сервера
 TcpServer::status TcpServer::restart() {
     if (_status == status::up)
         stop();
     return start();
 }
 
-// Âõîä â ïîòîê îáðàáîòêè ñîåäèíåíèé
+// Вход в поток обработки соединений
 void TcpServer::joinLoop() { handler_thread.join(); }
 
-//Çàãðóæàåò â áóôåð äàííûå îò êëèåíòà è âîçâðàùàåò èõ ðàçìåð
+//Загружает в буфер данные от клиента и возвращает их размер
 int TcpServer::Client::loadData() { return recv(socket, buffer, buffer_size, 0); }
-//Âîçâðàùàåò óêàçàòåëü íà áóôåð ñ äàííûìè îò êëèåíòà
+//Возвращает указатель на буфер с данными от клиента
 char* TcpServer::Client::getData() { return buffer; }
-//Îòïðàâëÿåò äàííûå êëèåíòó
+//Отправляет данные клиенту
 bool TcpServer::Client::sendData(const char* buffer, const size_t size) const {
     if (send(socket, buffer, size, 0) < 0) return false;
     return true;
 }
 
 #ifdef _WIN32 // Windows NT
-//Çàïóñê ñåðâåðà
+//Запуск сервера
 TcpServer::status TcpServer::start() {
-    WSAStartup(MAKEWORD(2, 2), &w_data); //Çàäà¸ì âåðñèþ WinSocket
+    WSAStartup(MAKEWORD(2, 2), &w_data); //Задаём версию WinSocket
 
-    SOCKADDR_IN address; //Ñòðóêòóðà õîñò/ïîðò/ïðîòîêîë äëÿ èíèöèàëèçàöèè ñîêåòà
-    address.sin_addr.S_un.S_addr = INADDR_ANY; //Ëþáîé IP àäðåññ
-    address.sin_port = htons(port); //Çàäà¸ì ïîðò
-    address.sin_family = AF_INET; //AF_INET - Cåìåéñòâî àäðåñîâ äëÿ IPv4
+    SOCKADDR_IN address; //Структура хост/порт/протокол для инициализации сокета
+    address.sin_addr.S_un.S_addr = INADDR_ANY; //Любой IP адресс
+    address.sin_port = htons(port); //Задаём порт
+    address.sin_family = AF_INET; //AF_INET - Cемейство адресов для IPv4
 
-    //Èíèöèàëèçèðóåì íàø ñîêåò è ïðîâåðÿåì êîððåêòíî ëè ïðîøëà èíèöèàëèçàöèÿ
-    //â ïðîòèâíîì ñëó÷àå âîçâðàùàåì ñòàòóñ ñ îøèáêîé
+    //Инициализируем наш сокет и проверяем корректно ли прошла инициализация
+    //в противном случае возвращаем статус с ошибкой
     if (static_cast<int>(serv_socket = socket(AF_INET, SOCK_STREAM, 0)) == SOCKET_ERROR) return _status = status::err_socket_init;
 
-    //Ïðèñâàèâàåì ê ñîêåòó àäðåññ è ïîðò è ïðîâåðÿåì íà êîðåêòíîñòü ñîêåò
-    //â ïðîòèâíîì ñëó÷àå âîçâðàùàåì ñòàòóñ ñ îøèáêîé
+    //Присваиваем к сокету адресс и порт и проверяем на коректность сокет
+    //в противном случае возвращаем статус с ошибкой
     if (bind(serv_socket, (struct sockaddr*) & address, sizeof(address)) == SOCKET_ERROR) return _status = status::err_socket_bind;
-    //Çàïóñêàåì ïðîñëóøêó è ïðîâåðÿåì çàïóñòèëàñü ëè îíà
-    //â ïðîòèâíîì ñëó÷àå âîçâðàùàåì ñòàòóñ ñ îøèáêîé
+    //Запускаем прослушку и проверяем запустилась ли она
+    //в противном случае возвращаем статус с ошибкой
     if (listen(serv_socket, SOMAXCONN) == SOCKET_ERROR) return _status = status::err_socket_listening;
 
-    //Ìåíÿåì ñòàòóñ, çàïóñêàåì îáðàáîò÷èê ñîåäèíåíèé è âîçâðàùàåì ñòàòóñ
+    //Меняем статус, запускаем обработчик соединений и возвращаем статус
     _status = status::up;
     handler_thread = std::thread([this] {handlingLoop(); });
     return _status;
 }
 
-//Îñòàíîâêà ñåðâåðà
+//Остановка сервера
 void TcpServer::stop() {
-    _status = status::close; //Èçìåíåíèå ñòàòóñà
-    closesocket(serv_socket); //Çàêðûòèå ñîêåòà
-    joinLoop(); //Îæèäàíèå çàâåðøåíèÿ
-    for (std::thread& cl_thr : client_handler_threads) //Ïåðåáîð âñåõ êëèåíòñêèõ ïîòîêîâ
-        cl_thr.join(); // Îæèäàíèå èõ çàâåðøåíèÿ
-    client_handler_threads.clear(); // Î÷èñòêà ñïèñêà êëèåíòñêèõ ïîòîêîâ
-    client_handling_end.clear(); // Î÷èñòêà ñïèñêà èäåíòèôèêàòîðîâ çàâåðø¸ííûõ êëèåíòñêèõ ïîòîêîâ
+    _status = status::close; //Изменение статуса
+    closesocket(serv_socket); //Закрытие сокета
+    joinLoop(); //Ожидание завершения
+    for (std::thread& cl_thr : client_handler_threads) //Перебор всех клиентских потоков
+        cl_thr.join(); // Ожидание их завершения
+    client_handler_threads.clear(); // Очистка списка клиентских потоков
+    client_handling_end.clear(); // Очистка списка идентификаторов завершённых клиентских потоков
 }
 
-// Ôóíêèöÿ îáðàáîòêè ñîåäèíåíèé
+// Функиця обработки соединений
 void TcpServer::handlingLoop() {
     while (_status == status::up) {
-        SOCKET client_socket; //Ñîêåò êëèåíòà
-        SOCKADDR_IN client_addr; //Àäðåññ êëèåíòà
-        int addrlen = sizeof(client_addr); //Ðàçìåð àäðåñà êëèåíòà
-        //Ïîëó÷åíèå ñîêåòà è àäðåñà êëèåíòà
-        //(åñëè ñîêåò êîðåêòåí è ñåðâåð çàðóùåí çàïóñê ïîòîêà îáðàáîòêè)
+        SOCKET client_socket; //Сокет клиента
+        SOCKADDR_IN client_addr; //Адресс клиента
+        int addrlen = sizeof(client_addr); //Размер адреса клиента
+        //Получение сокета и адреса клиента
+        //(если сокет коректен и сервер зарущен запуск потока обработки)
         if ((client_socket = accept(serv_socket, (struct sockaddr*) & client_addr, &addrlen)) != 0 && _status == status::up) {
             unsigned long ul = 1;
             ioctlsocket(client_socket, FIONBIO, (unsigned long*)&ul);
             client_handler_threads.push_back(std::thread([this, &client_socket, &client_addr] {
-                handler(new Client(client_socket, client_addr)); //Çàïóñê callback-îáðàáîò÷èêà
-                //Äîáàâëåíèå èäåíòèôèêàòîðà â ñïèñîê èäåíòèôèêàòîðîâ çàâåðø¸ííûõ êëèåíòñêèõ ïîòîêîâ
+                handler(new Client(client_socket, client_addr)); //Запуск callback-обработчика
+                //Добавление идентификатора в список идентификаторов завершённых клиентских потоков
                 client_handling_end.push_back(std::this_thread::get_id());
                 }));
         }
-        //Î÷èñòêà îòðàáîòàííûõ êëèåíòñêèõ ïîòîêîâ
+        //Очистка отработанных клиентских потоков
         if (!client_handling_end.empty())
             for (std::list<std::thread::id>::iterator id_it = client_handling_end.begin(); !client_handling_end.empty(); id_it = client_handling_end.begin())
                 for (std::list<std::thread>::iterator thr_it = client_handler_threads.begin(); thr_it != client_handler_threads.end(); ++thr_it)
@@ -119,23 +119,23 @@ void TcpServer::handlingLoop() {
     }
 }
 
-// Êîíñòðóêòîð êëèåíòà ïî ñîêåòó è àäðåñó
+// Конструктор клиента по сокету и адресу
 TcpServer::Client::Client(SOCKET socket, SOCKADDR_IN address) : socket(socket), address(address) {}
-// Êîíñòðóêòîð êîïèðîâàíèÿ
+// Конструктор копирования
 TcpServer::Client::Client(const TcpServer::Client& other) : socket(other.socket), address(other.address) {}
 
 TcpServer::Client::~Client() {
-    shutdown(socket, 0); //Îáðûâ ñîåäèíåíèÿ ñîêåòà
-    closesocket(socket); //Çàêðûòèå ñîêåòà
+    shutdown(socket, 0); //Обрыв соединения сокета
+    closesocket(socket); //Закрытие сокета
 }
 
-// Ãåòòåðû õîñòà è ïîðòà
+// Геттеры хоста и порта
 uint32_t TcpServer::Client::getHost() const { return address.sin_addr.S_un.S_addr; }
 uint16_t TcpServer::Client::getPort() const { return address.sin_port; }
 
 #else // *nix
 
-//Çàïóñê ñåðâåðà (ïî àíàëîãèè ñ ðåàëèçàöèåé äëÿ Windows)
+//Запуск сервера (по аналогии с реализацией для Windows)
 TcpServer::status TcpServer::start() {
     struct sockaddr_in server;
     server.sin_addr.s_addr = INADDR_ANY;
@@ -152,7 +152,7 @@ TcpServer::status TcpServer::start() {
     return _status;
 }
 
-//Îñòàíîâêà ñåðâåðà
+//Остановка сервера
 void TcpServer::stop() {
     _status = status::close;
     close(serv_socket);
@@ -163,7 +163,7 @@ void TcpServer::stop() {
     client_handling_end.clear();
 }
 
-// Ôóíêèöÿ îáðàáîòêè ñîåäèíåíèé (ïî àíàëîãèè ñ ðåàëèçàöèåé äëÿ Windows)
+// Функиця обработки соединений (по аналогии с реализацией для Windows)
 void TcpServer::handlingLoop() {
     while (_status == status::up) {
         int client_socket;
@@ -189,17 +189,17 @@ void TcpServer::handlingLoop() {
     }
 }
 
-// Êîíñòðóêòîð êëèåíòà ïî ñîêåòó è àäðåñó
+// Конструктор клиента по сокету и адресу
 TcpServer::Client::Client(int socket, struct sockaddr_in address) : socket(socket), address(address) {}
-// Êîíñòðóêòîð êîïèðîâàíèÿ
+// Конструктор копирования
 TcpServer::Client::Client(const TcpServer::Client& other) : socket(other.socket), address(other.address) {}
 
 TcpServer::Client::~Client() {
-    shutdown(socket, 0); //Îáðûâ ñîåäèíåíèÿ ñîêåòà
-    close(socket); //Çàêðûòèå ñîêåòà
+    shutdown(socket, 0); //Обрыв соединения сокета
+    close(socket); //Закрытие сокета
 }
 
-// Ãåòòåðû õîñòà è ïîðòà
+// Геттеры хоста и порта
 uint32_t TcpServer::Client::getHost() { return address.sin_addr.s_addr; }
 uint16_t TcpServer::Client::getPort() { return address.sin_port; }
 
