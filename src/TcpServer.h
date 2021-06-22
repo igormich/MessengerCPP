@@ -21,14 +21,14 @@
 
 #endif
 
-//Буффер для приёма данных от клиента
+//Р‘СѓС„С„РµСЂ РґР»СЏ РїСЂРёС‘РјР° РґР°РЅРЅС‹С… РѕС‚ РєР»РёРµРЅС‚Р°
 static constexpr uint16_t buffer_size = 4096;
 
 struct TcpServer {
     class Client;
-    //Тип Callback-функции обработчика клиента
+    //РўРёРї Callback-С„СѓРЅРєС†РёРё РѕР±СЂР°Р±РѕС‚С‡РёРєР° РєР»РёРµРЅС‚Р°
     typedef std::function<void(Client*)> handler_function_t;
-    //Статус сервера
+    //РЎС‚Р°С‚СѓСЃ СЃРµСЂРІРµСЂР°
     enum class status : uint8_t {
         up = 0,
         err_socket_init = 1,
@@ -38,7 +38,7 @@ struct TcpServer {
     };
 
 private:
-    uint16_t port; //Порт
+    uint16_t port; //РџРѕСЂС‚
     status _status = status::close;
     handler_function_t handler;
 
