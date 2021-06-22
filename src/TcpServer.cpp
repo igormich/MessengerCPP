@@ -1,15 +1,15 @@
 #include "TcpServer.h"
 #include <chrono>
 
-//Конструктор принимает:
-//port - порт на котором будем запускать сервер
-//handler - callback-функция запускаямая при подключении клиента
-//          объект которого и передают первым аргументом в callback
-//          (пример лямбда-функции: [](TcpServer::Client){...do something...})
+//ГЉГ®Г­Г±ГІГ°ГіГЄГІГ®Г° ГЇГ°ГЁГ­ГЁГ¬Г ГҐГІ:
+//port - ГЇГ®Г°ГІ Г­Г  ГЄГ®ГІГ®Г°Г®Г¬ ГЎГіГ¤ГҐГ¬ Г§Г ГЇГіГ±ГЄГ ГІГј Г±ГҐГ°ГўГҐГ°
+//handler - callback-ГґГіГ­ГЄГ¶ГЁГї Г§Г ГЇГіГ±ГЄГ ГїГ¬Г Гї ГЇГ°ГЁ ГЇГ®Г¤ГЄГ«ГѕГ·ГҐГ­ГЁГЁ ГЄГ«ГЁГҐГ­ГІГ 
+//          Г®ГЎГєГҐГЄГІ ГЄГ®ГІГ®Г°Г®ГЈГ® ГЁ ГЇГҐГ°ГҐГ¤Г ГѕГІ ГЇГҐГ°ГўГ»Г¬ Г Г°ГЈГіГ¬ГҐГ­ГІГ®Г¬ Гў callback
+//          (ГЇГ°ГЁГ¬ГҐГ° Г«ГїГ¬ГЎГ¤Г -ГґГіГ­ГЄГ¶ГЁГЁ: [](TcpServer::Client){...do something...})
 TcpServer::TcpServer(const uint16_t port, handler_function_t handler) : port(port), handler(handler), w_data(WSAData()) {}
 
-//Деструктор останавливает сервер если он был запущен
-//и вычищает заданную версию WinSocket
+//Г„ГҐГ±ГІГ°ГіГЄГІГ®Г° Г®Г±ГІГ Г­Г ГўГ«ГЁГўГ ГҐГІ Г±ГҐГ°ГўГҐГ° ГҐГ±Г«ГЁ Г®Г­ ГЎГ»Г« Г§Г ГЇГіГ№ГҐГ­
+//ГЁ ГўГ»Г·ГЁГ№Г ГҐГІ Г§Г Г¤Г Г­Г­ГіГѕ ГўГҐГ°Г±ГЁГѕ WinSocket
 TcpServer::~TcpServer() {
     if (_status == status::up)
         stop();
@@ -18,93 +18,93 @@ TcpServer::~TcpServer() {
 #endif
 }
 
-//Задаёт callback-функцию запускаямую при подключении клиента
+//Г‡Г Г¤Г ВёГІ callback-ГґГіГ­ГЄГ¶ГЁГѕ Г§Г ГЇГіГ±ГЄГ ГїГ¬ГіГѕ ГЇГ°ГЁ ГЇГ®Г¤ГЄГ«ГѕГ·ГҐГ­ГЁГЁ ГЄГ«ГЁГҐГ­ГІГ 
 void TcpServer::setHandler(TcpServer::handler_function_t handler) { this->handler = handler; }
 
-//Getter/Setter порта
+//Getter/Setter ГЇГ®Г°ГІГ 
 uint16_t TcpServer::getPort() const { return port; }
 uint16_t TcpServer::setPort(const uint16_t port) {
     this->port = port;
-    restart(); //Перезапустить если сервер был запущен
+    restart(); //ГЏГҐГ°ГҐГ§Г ГЇГіГ±ГІГЁГІГј ГҐГ±Г«ГЁ Г±ГҐГ°ГўГҐГ° ГЎГ»Г« Г§Г ГЇГіГ№ГҐГ­
     return port;
 }
 
-//Перезапуск сервера
+//ГЏГҐГ°ГҐГ§Г ГЇГіГ±ГЄ Г±ГҐГ°ГўГҐГ°Г 
 TcpServer::status TcpServer::restart() {
     if (_status == status::up)
         stop();
     return start();
 }
 
-// Вход в поток обработки соединений
+// Г‚ГµГ®Г¤ Гў ГЇГ®ГІГ®ГЄ Г®ГЎГ°Г ГЎГ®ГІГЄГЁ Г±Г®ГҐГ¤ГЁГ­ГҐГ­ГЁГ©
 void TcpServer::joinLoop() { handler_thread.join(); }
 
-//Загружает в буфер данные от клиента и возвращает их размер
+//Г‡Г ГЈГ°ГіГ¦Г ГҐГІ Гў ГЎГіГґГҐГ° Г¤Г Г­Г­Г»ГҐ Г®ГІ ГЄГ«ГЁГҐГ­ГІГ  ГЁ ГўГ®Г§ГўГ°Г Г№Г ГҐГІ ГЁГµ Г°Г Г§Г¬ГҐГ°
 int TcpServer::Client::loadData() { return recv(socket, buffer, buffer_size, 0); }
-//Возвращает указатель на буфер с данными от клиента
+//Г‚Г®Г§ГўГ°Г Г№Г ГҐГІ ГіГЄГ Г§Г ГІГҐГ«Гј Г­Г  ГЎГіГґГҐГ° Г± Г¤Г Г­Г­Г»Г¬ГЁ Г®ГІ ГЄГ«ГЁГҐГ­ГІГ 
 char* TcpServer::Client::getData() { return buffer; }
-//Отправляет данные клиенту
+//ГЋГІГЇГ°Г ГўГ«ГїГҐГІ Г¤Г Г­Г­Г»ГҐ ГЄГ«ГЁГҐГ­ГІГі
 bool TcpServer::Client::sendData(const char* buffer, const size_t size) const {
     if (send(socket, buffer, size, 0) < 0) return false;
     return true;
 }
 
 #ifdef _WIN32 // Windows NT
-//Запуск сервера
+//Г‡Г ГЇГіГ±ГЄ Г±ГҐГ°ГўГҐГ°Г 
 TcpServer::status TcpServer::start() {
-    WSAStartup(MAKEWORD(2, 2), &w_data); //Задаём версию WinSocket
+    WSAStartup(MAKEWORD(2, 2), &w_data); //Г‡Г Г¤Г ВёГ¬ ГўГҐГ°Г±ГЁГѕ WinSocket
 
-    SOCKADDR_IN address; //Структура хост/порт/протокол для инициализации сокета
-    address.sin_addr.S_un.S_addr = INADDR_ANY; //Любой IP адресс
-    address.sin_port = htons(port); //Задаём порт
-    address.sin_family = AF_INET; //AF_INET - Cемейство адресов для IPv4
+    SOCKADDR_IN address; //Г‘ГІГ°ГіГЄГІГіГ°Г  ГµГ®Г±ГІ/ГЇГ®Г°ГІ/ГЇГ°Г®ГІГ®ГЄГ®Г« Г¤Г«Гї ГЁГ­ГЁГ¶ГЁГ Г«ГЁГ§Г Г¶ГЁГЁ Г±Г®ГЄГҐГІГ 
+    address.sin_addr.S_un.S_addr = INADDR_ANY; //Г‹ГѕГЎГ®Г© IP Г Г¤Г°ГҐГ±Г±
+    address.sin_port = htons(port); //Г‡Г Г¤Г ВёГ¬ ГЇГ®Г°ГІ
+    address.sin_family = AF_INET; //AF_INET - CГҐГ¬ГҐГ©Г±ГІГўГ® Г Г¤Г°ГҐГ±Г®Гў Г¤Г«Гї IPv4
 
-    //Инициализируем наш сокет и проверяем корректно ли прошла инициализация
-    //в противном случае возвращаем статус с ошибкой
+    //Г€Г­ГЁГ¶ГЁГ Г«ГЁГ§ГЁГ°ГіГҐГ¬ Г­Г Гё Г±Г®ГЄГҐГІ ГЁ ГЇГ°Г®ГўГҐГ°ГїГҐГ¬ ГЄГ®Г°Г°ГҐГЄГІГ­Г® Г«ГЁ ГЇГ°Г®ГёГ«Г  ГЁГ­ГЁГ¶ГЁГ Г«ГЁГ§Г Г¶ГЁГї
+    //Гў ГЇГ°Г®ГІГЁГўГ­Г®Г¬ Г±Г«ГіГ·Г ГҐ ГўГ®Г§ГўГ°Г Г№Г ГҐГ¬ Г±ГІГ ГІГіГ± Г± Г®ГёГЁГЎГЄГ®Г©
     if (static_cast<int>(serv_socket = socket(AF_INET, SOCK_STREAM, 0)) == SOCKET_ERROR) return _status = status::err_socket_init;
 
-    //Присваиваем к сокету адресс и порт и проверяем на коректность сокет
-    //в противном случае возвращаем статус с ошибкой
+    //ГЏГ°ГЁГ±ГўГ ГЁГўГ ГҐГ¬ ГЄ Г±Г®ГЄГҐГІГі Г Г¤Г°ГҐГ±Г± ГЁ ГЇГ®Г°ГІ ГЁ ГЇГ°Г®ГўГҐГ°ГїГҐГ¬ Г­Г  ГЄГ®Г°ГҐГЄГІГ­Г®Г±ГІГј Г±Г®ГЄГҐГІ
+    //Гў ГЇГ°Г®ГІГЁГўГ­Г®Г¬ Г±Г«ГіГ·Г ГҐ ГўГ®Г§ГўГ°Г Г№Г ГҐГ¬ Г±ГІГ ГІГіГ± Г± Г®ГёГЁГЎГЄГ®Г©
     if (bind(serv_socket, (struct sockaddr*) & address, sizeof(address)) == SOCKET_ERROR) return _status = status::err_socket_bind;
-    //Запускаем прослушку и проверяем запустилась ли она
-    //в противном случае возвращаем статус с ошибкой
+    //Г‡Г ГЇГіГ±ГЄГ ГҐГ¬ ГЇГ°Г®Г±Г«ГіГёГЄГі ГЁ ГЇГ°Г®ГўГҐГ°ГїГҐГ¬ Г§Г ГЇГіГ±ГІГЁГ«Г Г±Гј Г«ГЁ Г®Г­Г 
+    //Гў ГЇГ°Г®ГІГЁГўГ­Г®Г¬ Г±Г«ГіГ·Г ГҐ ГўГ®Г§ГўГ°Г Г№Г ГҐГ¬ Г±ГІГ ГІГіГ± Г± Г®ГёГЁГЎГЄГ®Г©
     if (listen(serv_socket, SOMAXCONN) == SOCKET_ERROR) return _status = status::err_socket_listening;
 
-    //Меняем статус, запускаем обработчик соединений и возвращаем статус
+    //ГЊГҐГ­ГїГҐГ¬ Г±ГІГ ГІГіГ±, Г§Г ГЇГіГ±ГЄГ ГҐГ¬ Г®ГЎГ°Г ГЎГ®ГІГ·ГЁГЄ Г±Г®ГҐГ¤ГЁГ­ГҐГ­ГЁГ© ГЁ ГўГ®Г§ГўГ°Г Г№Г ГҐГ¬ Г±ГІГ ГІГіГ±
     _status = status::up;
     handler_thread = std::thread([this] {handlingLoop(); });
     return _status;
 }
 
-//Остановка сервера
+//ГЋГ±ГІГ Г­Г®ГўГЄГ  Г±ГҐГ°ГўГҐГ°Г 
 void TcpServer::stop() {
-    _status = status::close; //Изменение статуса
-    closesocket(serv_socket); //Закрытие сокета
-    joinLoop(); //Ожидание завершения
-    for (std::thread& cl_thr : client_handler_threads) //Перебор всех клиентских потоков
-        cl_thr.join(); // Ожидание их завершения
-    client_handler_threads.clear(); // Очистка списка клиентских потоков
-    client_handling_end.clear(); // Очистка списка идентификаторов завершённых клиентских потоков
+    _status = status::close; //Г€Г§Г¬ГҐГ­ГҐГ­ГЁГҐ Г±ГІГ ГІГіГ±Г 
+    closesocket(serv_socket); //Г‡Г ГЄГ°Г»ГІГЁГҐ Г±Г®ГЄГҐГІГ 
+    joinLoop(); //ГЋГ¦ГЁГ¤Г Г­ГЁГҐ Г§Г ГўГҐГ°ГёГҐГ­ГЁГї
+    for (std::thread& cl_thr : client_handler_threads) //ГЏГҐГ°ГҐГЎГ®Г° ГўГ±ГҐГµ ГЄГ«ГЁГҐГ­ГІГ±ГЄГЁГµ ГЇГ®ГІГ®ГЄГ®Гў
+        cl_thr.join(); // ГЋГ¦ГЁГ¤Г Г­ГЁГҐ ГЁГµ Г§Г ГўГҐГ°ГёГҐГ­ГЁГї
+    client_handler_threads.clear(); // ГЋГ·ГЁГ±ГІГЄГ  Г±ГЇГЁГ±ГЄГ  ГЄГ«ГЁГҐГ­ГІГ±ГЄГЁГµ ГЇГ®ГІГ®ГЄГ®Гў
+    client_handling_end.clear(); // ГЋГ·ГЁГ±ГІГЄГ  Г±ГЇГЁГ±ГЄГ  ГЁГ¤ГҐГ­ГІГЁГґГЁГЄГ ГІГ®Г°Г®Гў Г§Г ГўГҐГ°ГёВёГ­Г­Г»Гµ ГЄГ«ГЁГҐГ­ГІГ±ГЄГЁГµ ГЇГ®ГІГ®ГЄГ®Гў
 }
 
-// Функиця обработки соединений
+// Г”ГіГ­ГЄГЁГ¶Гї Г®ГЎГ°Г ГЎГ®ГІГЄГЁ Г±Г®ГҐГ¤ГЁГ­ГҐГ­ГЁГ©
 void TcpServer::handlingLoop() {
     while (_status == status::up) {
-        SOCKET client_socket; //Сокет клиента
-        SOCKADDR_IN client_addr; //Адресс клиента
-        int addrlen = sizeof(client_addr); //Размер адреса клиента
-        //Получение сокета и адреса клиента
-        //(если сокет коректен и сервер зарущен запуск потока обработки)
+        SOCKET client_socket; //Г‘Г®ГЄГҐГІ ГЄГ«ГЁГҐГ­ГІГ 
+        SOCKADDR_IN client_addr; //ГЂГ¤Г°ГҐГ±Г± ГЄГ«ГЁГҐГ­ГІГ 
+        int addrlen = sizeof(client_addr); //ГђГ Г§Г¬ГҐГ° Г Г¤Г°ГҐГ±Г  ГЄГ«ГЁГҐГ­ГІГ 
+        //ГЏГ®Г«ГіГ·ГҐГ­ГЁГҐ Г±Г®ГЄГҐГІГ  ГЁ Г Г¤Г°ГҐГ±Г  ГЄГ«ГЁГҐГ­ГІГ 
+        //(ГҐГ±Г«ГЁ Г±Г®ГЄГҐГІ ГЄГ®Г°ГҐГЄГІГҐГ­ ГЁ Г±ГҐГ°ГўГҐГ° Г§Г Г°ГіГ№ГҐГ­ Г§Г ГЇГіГ±ГЄ ГЇГ®ГІГ®ГЄГ  Г®ГЎГ°Г ГЎГ®ГІГЄГЁ)
         if ((client_socket = accept(serv_socket, (struct sockaddr*) & client_addr, &addrlen)) != 0 && _status == status::up) {
             unsigned long ul = 1;
             ioctlsocket(client_socket, FIONBIO, (unsigned long*)&ul);
             client_handler_threads.push_back(std::thread([this, &client_socket, &client_addr] {
-                handler(new Client(client_socket, client_addr)); //Запуск callback-обработчика
-                //Добавление идентификатора в список идентификаторов завершённых клиентских потоков
+                handler(new Client(client_socket, client_addr)); //Г‡Г ГЇГіГ±ГЄ callback-Г®ГЎГ°Г ГЎГ®ГІГ·ГЁГЄГ 
+                //Г„Г®ГЎГ ГўГ«ГҐГ­ГЁГҐ ГЁГ¤ГҐГ­ГІГЁГґГЁГЄГ ГІГ®Г°Г  Гў Г±ГЇГЁГ±Г®ГЄ ГЁГ¤ГҐГ­ГІГЁГґГЁГЄГ ГІГ®Г°Г®Гў Г§Г ГўГҐГ°ГёВёГ­Г­Г»Гµ ГЄГ«ГЁГҐГ­ГІГ±ГЄГЁГµ ГЇГ®ГІГ®ГЄГ®Гў
                 client_handling_end.push_back(std::this_thread::get_id());
                 }));
         }
-        //Очистка отработанных клиентских потоков
+        //ГЋГ·ГЁГ±ГІГЄГ  Г®ГІГ°Г ГЎГ®ГІГ Г­Г­Г»Гµ ГЄГ«ГЁГҐГ­ГІГ±ГЄГЁГµ ГЇГ®ГІГ®ГЄГ®Гў
         if (!client_handling_end.empty())
             for (std::list<std::thread::id>::iterator id_it = client_handling_end.begin(); !client_handling_end.empty(); id_it = client_handling_end.begin())
                 for (std::list<std::thread>::iterator thr_it = client_handler_threads.begin(); thr_it != client_handler_threads.end(); ++thr_it)
@@ -119,23 +119,23 @@ void TcpServer::handlingLoop() {
     }
 }
 
-// Конструктор клиента по сокету и адресу
+// ГЉГ®Г­Г±ГІГ°ГіГЄГІГ®Г° ГЄГ«ГЁГҐГ­ГІГ  ГЇГ® Г±Г®ГЄГҐГІГі ГЁ Г Г¤Г°ГҐГ±Гі
 TcpServer::Client::Client(SOCKET socket, SOCKADDR_IN address) : socket(socket), address(address) {}
-// Конструктор копирования
+// ГЉГ®Г­Г±ГІГ°ГіГЄГІГ®Г° ГЄГ®ГЇГЁГ°Г®ГўГ Г­ГЁГї
 TcpServer::Client::Client(const TcpServer::Client& other) : socket(other.socket), address(other.address) {}
 
 TcpServer::Client::~Client() {
-    shutdown(socket, 0); //Обрыв соединения сокета
-    closesocket(socket); //Закрытие сокета
+    shutdown(socket, 0); //ГЋГЎГ°Г»Гў Г±Г®ГҐГ¤ГЁГ­ГҐГ­ГЁГї Г±Г®ГЄГҐГІГ 
+    closesocket(socket); //Г‡Г ГЄГ°Г»ГІГЁГҐ Г±Г®ГЄГҐГІГ 
 }
 
-// Геттеры хоста и порта
+// ГѓГҐГІГІГҐГ°Г» ГµГ®Г±ГІГ  ГЁ ГЇГ®Г°ГІГ 
 uint32_t TcpServer::Client::getHost() const { return address.sin_addr.S_un.S_addr; }
 uint16_t TcpServer::Client::getPort() const { return address.sin_port; }
 
 #else // *nix
 
-//Запуск сервера (по аналогии с реализацией для Windows)
+//Г‡Г ГЇГіГ±ГЄ Г±ГҐГ°ГўГҐГ°Г  (ГЇГ® Г Г­Г Г«Г®ГЈГЁГЁ Г± Г°ГҐГ Г«ГЁГ§Г Г¶ГЁГҐГ© Г¤Г«Гї Windows)
 TcpServer::status TcpServer::start() {
     struct sockaddr_in server;
     server.sin_addr.s_addr = INADDR_ANY;
@@ -152,7 +152,7 @@ TcpServer::status TcpServer::start() {
     return _status;
 }
 
-//Остановка сервера
+//ГЋГ±ГІГ Г­Г®ГўГЄГ  Г±ГҐГ°ГўГҐГ°Г 
 void TcpServer::stop() {
     _status = status::close;
     close(serv_socket);
@@ -163,7 +163,7 @@ void TcpServer::stop() {
     client_handling_end.clear();
 }
 
-// Функиця обработки соединений (по аналогии с реализацией для Windows)
+// Г”ГіГ­ГЄГЁГ¶Гї Г®ГЎГ°Г ГЎГ®ГІГЄГЁ Г±Г®ГҐГ¤ГЁГ­ГҐГ­ГЁГ© (ГЇГ® Г Г­Г Г«Г®ГЈГЁГЁ Г± Г°ГҐГ Г«ГЁГ§Г Г¶ГЁГҐГ© Г¤Г«Гї Windows)
 void TcpServer::handlingLoop() {
     while (_status == status::up) {
         int client_socket;
@@ -189,17 +189,17 @@ void TcpServer::handlingLoop() {
     }
 }
 
-// Конструктор клиента по сокету и адресу
+// ГЉГ®Г­Г±ГІГ°ГіГЄГІГ®Г° ГЄГ«ГЁГҐГ­ГІГ  ГЇГ® Г±Г®ГЄГҐГІГі ГЁ Г Г¤Г°ГҐГ±Гі
 TcpServer::Client::Client(int socket, struct sockaddr_in address) : socket(socket), address(address) {}
-// Конструктор копирования
+// ГЉГ®Г­Г±ГІГ°ГіГЄГІГ®Г° ГЄГ®ГЇГЁГ°Г®ГўГ Г­ГЁГї
 TcpServer::Client::Client(const TcpServer::Client& other) : socket(other.socket), address(other.address) {}
 
 TcpServer::Client::~Client() {
-    shutdown(socket, 0); //Обрыв соединения сокета
-    close(socket); //Закрытие сокета
+    shutdown(socket, 0); //ГЋГЎГ°Г»Гў Г±Г®ГҐГ¤ГЁГ­ГҐГ­ГЁГї Г±Г®ГЄГҐГІГ 
+    close(socket); //Г‡Г ГЄГ°Г»ГІГЁГҐ Г±Г®ГЄГҐГІГ 
 }
 
-// Геттеры хоста и порта
+// ГѓГҐГІГІГҐГ°Г» ГµГ®Г±ГІГ  ГЁ ГЇГ®Г°ГІГ 
 uint32_t TcpServer::Client::getHost() { return address.sin_addr.s_addr; }
 uint16_t TcpServer::Client::getPort() { return address.sin_port; }
 
