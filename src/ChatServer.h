@@ -14,12 +14,12 @@
 using namespace std;
 struct ChatServer {
 private:
-	vector<std::pair<string, TcpServer::Client*>> clients;
-	vector<TcpServer::Client*> newBees;
+	vector<std::pair<string, shared_ptr<TcpServer::Client>>> clients;
+	vector<shared_ptr<TcpServer::Client>> newBees;
 	void checkNewBees();
 	void checkClients();
 public:
-	void sendToAll(string s, TcpServer::Client* sender);
+	void sendToAll(string s, shared_ptr<TcpServer::Client>);
 	void start(int port);
 };
 #endif //CHAR_SERVER_H
